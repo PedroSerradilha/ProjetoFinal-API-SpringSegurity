@@ -27,6 +27,14 @@ public class UserController {
         return new ResponseEntity<>(token, HttpStatus.OK);
     }
 
+    // Solicitação de código OTP (Etapa 2)
+    @PostMapping("/auth/request-code")
+    public ResponseEntity<Void> requestCode(@RequestBody java.util.Map<String, String> request) {
+        String email = request.get("email");
+        userService.solicitarCodigoAcesso(email);
+        return ResponseEntity.ok().build(); // Retorna 200 OK sem falar o código no JSON por segurança
+    }
+
     @PostMapping
     public ResponseEntity<Void> createUser(@RequestBody CreateUserDto createUserDto) {
         userService.createUser(createUserDto);

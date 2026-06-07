@@ -22,7 +22,8 @@ public class SecurityConfiguration {
     // ENDPOINTS PÚBLICOS ========
     public static final String[] ENDPOINTS_WITH_AUTHENTICATION_NOT_REQUIRED = {
         "/users/login",
-        "/users"
+        "/users",
+        "/users/auth/request-code"
     };
 
     // ENDPOINTS COM ACESSO RESTRITO ========
@@ -37,15 +38,24 @@ public class SecurityConfiguration {
     @Autowired
     private UserAuthenticationFilter userAuthenticationFilter;
 
-    @Bean
+   @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
             .csrf(csrf -> csrf.disable()) // Desabilita CSRF (apropriado para APIs stateless)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // Sem sessão no servidor
             .authorizeHttpRequests(authorize -> authorize
+                // 1. Libera o array de endpoints que não exigem autenticação
                 .requestMatchers(ENDPOINTS_WITH_AUTHENTICATION_NOT_REQUIRED).permitAll()
+                
+                // 2. Garante o acesso público às rotas com e sem o prefixo /users de forma correta
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/users/auth/request-code", "/auth/request-code").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/users/login", "/login").permitAll()
+                
+                // 3. Suas regras de perfis (Roles)
                 .requestMatchers(ENDPOINTS_ADMIN).hasRole("ADMINISTRATOR")
                 .requestMatchers(ENDPOINTS_CUSTOMER).hasRole("CUSTOMER")
+                
+                // Qualquer outra rota exige login
                 .anyRequest().authenticated()
             )
             .addFilterBefore(userAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)

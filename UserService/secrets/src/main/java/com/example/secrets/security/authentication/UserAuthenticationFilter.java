@@ -1,22 +1,25 @@
 package com.example.secrets.security.authentication;
 
-import com.example.secrets.entity.User;
-import com.example.secrets.repository.UserRepository;
-import com.example.secrets.security.config.SecurityConfiguration;
-import com.example.secrets.security.service.JwtTokenService;
-import com.example.secrets.security.service.UserDetailsImpl;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.Arrays;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import java.io.IOException;
-import java.util.Arrays;
+
+import com.example.secrets.entity.User;
+import com.example.secrets.repository.UserRepository;
+import com.example.secrets.security.config.SecurityConfiguration;
+import com.example.secrets.security.service.JwtTokenService;
+import com.example.secrets.security.service.UserDetailsImpl;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 @Component
 public class UserAuthenticationFilter extends OncePerRequestFilter {
@@ -28,11 +31,20 @@ public class UserAuthenticationFilter extends OncePerRequestFilter {
     private UserRepository userRepository;
 
     @Override
-    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        if (isPublicEndpoint(request)) {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) 
+        throws ServletException, IOException {
+
+    String requestURI = request.getRequestURI();
+
+    // Uma verificação mais robusta usando contains para evitar problemas com prefixos ou caminhos de contexto
+    if (requestURI.contains("/auth/request-code") || requestURI.contains("/login")) {
+        filterChain.doFilter(request, response);
+        return;
+    }
+        /*if (isPublicEndpoint(request)) {
             filterChain.doFilter(request, response);
             return;
-        }
+        }*/
 
         String token = recoverToken(request);
         if (token != null) {
