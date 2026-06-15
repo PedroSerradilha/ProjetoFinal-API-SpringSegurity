@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8"><title>Acesso ao Sistema</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; margin-bottom: 15px; }
+        button { width: 100%; padding: 10px; background-color: #28a745; border: none; color: white; font-size: 16px; border-radius: 4px; cursor: pointer; }
+        .error { color: #dc3545; background-color: #f8d7da; padding: 10px; border-radius: 4px; margin-bottom: 15px; font-size: 14px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>Acessar com Código</h2>
+        <p>Digite seu e-mail para receber um código de acesso de 6 dígitos.</p>
+        
+        <% if (msgErro) { %> <div class="error"><%= msgErro %></div> <% } %>
+
+        <form action="/solicitar-codigo" method="POST">
+            <input type="email" name="email" value="<%= emailPreenchido %>" placeholder="seu-email@gmail.com" required>
+            <button type="submit">Enviar Código por E-mail</button>
+        </form>
+    </div>
+</body>
+</html>

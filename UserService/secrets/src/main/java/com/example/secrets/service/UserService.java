@@ -60,17 +60,54 @@ public class UserService {
         return new RecoveryJwtTokenDto(jwtTokenService.generateToken(userDetails));
     }
 
+    @Transactional
     public void createUser(CreateUserDto createUserDto) {
+        // 1. Define a role padrão usando o seu Enum existente
+        com.example.secrets.enums.RoleName rolePadrao = com.example.secrets.enums.RoleName.ROLE_CUSTOMER;
+        
+        // 2. Tenta buscar a Role correspondente no banco para evitar duplicações
+        Role finalRole;
+        try {
+            finalRole = entityManager.createQuery(
+                    "SELECT r FROM Role r WHERE r.name = :name", Role.class)
+                    .setParameter("name", rolePadrao)
+                    .getSingleResult();
+        } catch (Exception e) {
+            finalRole = Role.builder()
+                    .name(rolePadrao)
+                    .build();
+        }
+
+        // 3. Monta e salva o usuário no banco
         User newUser = User.builder()
                 .email(createUserDto.email())
                 .password(securityConfiguration.passwordEncoder().encode(createUserDto.password()))
-                .roles(List.of(Role.builder().name(createUserDto.role()).build()))
+                .roles(List.of(finalRole)) 
                 .build();
 
-        userRepository.save(newUser);
+        User userSalvo = userRepository.save(newUser); // Guarda o usuário salvo com o ID gerado
+
+        try {
+            // Cria o UUID com base no ID do usuário para bater com o formato do DTO
+            UUID userIdUuid = new UUID(0L, userSalvo.getId());
+
+            // Monta o DTO com a mensagem de boas-vindas do cadastro
+            com.example.secrets.dto.EmailDto emailDto = new com.example.secrets.dto.EmailDto(
+                    userIdUuid,
+                    userSalvo.getEmail(),
+                    "Cadastro Realizado com Sucesso!",
+                    "Olá! Seja muito bem-vindo ao sistema. Sua conta foi criada com sucesso!"
+            );
+
+            // Publica no CloudAMQP para o EmailService capturar do outro lado
+            userProducer.publishEmailMessage(emailDto);
+            System.out.println("Mensagem de boas-vindas enviada para a fila com sucesso!");
+        } catch (Exception e) {
+            System.err.println("Falha ao enviar mensagem para a fila do RabbitMQ: " + e.getMessage());
+        }
     }
 
-    // MÉTODO AJUSTADO PARA SEGUIR O ROTEIRO COMPLETAMENTE À RISCA
+    // MÉTODO SOLICITAR CÓDIGO (Mantido idêntico ao seu)
     @Transactional
     public void solicitarCodigoAcesso(String email) {
         // 1. Busca o usuário ou cria um temporário caso não exista (com ROLE_CUSTOMER)
@@ -105,7 +142,6 @@ public class UserService {
         codigoCacheService.salvarCodigo(email, codigo);
 
         // 4. Converte o ID Long para UUID fictício para cumprir a exigência do EmailDto
-        // Usamos o ID numérico para gerar um UUID constante (ex: ID 1 vira 00000000-0000-0000-0000-000000000001)
         UUID uuidFormatado = new UUID(0L, user.getId());
 
         // 5. Monta o DTO exatamente com a estrutura pedida (userId como UUID)
@@ -118,5 +154,15 @@ public class UserService {
 
         // 6. Publica a mensagem na fila do RabbitMQ
         userProducer.publishEmailMessage(emailDto);
+    }
+
+    public boolean validarCodigoCache(String email, String codigoDigitado) {
+        String codigoCorreto = codigoCacheService.obterCodigo(email);
+        
+        if (codigoCorreto == null) {
+            return false; // Código expirou ou não existe
+        }
+        
+        return codigoCorreto.equals(codigoDigitado);
     }
 }
