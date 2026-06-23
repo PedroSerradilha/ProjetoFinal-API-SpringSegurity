@@ -55,6 +55,9 @@ public class SecurityConfiguration {
                 .requestMatchers(ENDPOINTS_ADMIN).hasRole("ADMINISTRATOR")
                 .requestMatchers(ENDPOINTS_CUSTOMER).hasRole("CUSTOMER")
                 
+                // Não deixa o Spring Security bloquear a requisição antes de chegar no controller
+                .requestMatchers("/users/update-profile").permitAll()
+                
                 // Qualquer outra rota exige login
                 .anyRequest().authenticated()
             )

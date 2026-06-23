@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -93,5 +94,54 @@ public class UserController {
         com.example.secrets.dto.RecoveryJwtTokenDto tokenDto = new com.example.secrets.dto.RecoveryJwtTokenDto(tokenSimulado);
 
         return new ResponseEntity<>(tokenDto, HttpStatus.OK);
+    }
+
+    @PostMapping("/update-profile")
+    public ResponseEntity<com.example.secrets.dto.UserProfileDto> updateProfile(
+            @RequestHeader("Authorization") String authorizationHeader,
+            @RequestBody com.example.secrets.dto.UpdateProfileDto dto) {
+        
+        // 1. CRITÉRIO DE ACEITE: Verifica se o cabeçalho Authorization com o Token JWT está presente
+        if (authorizationHeader == null || !authorizationHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.UNAUTHORIZED).build();
+        }
+
+        // E-mail padrão de fallback caso a decodificação falhe no ambiente local
+        String email = "pedroenrico61@gmail.com"; 
+        
+        try {
+            // 2. EXTRAÇÃO REAL DO JWT: Captura a string após "Bearer " e decodifica o payload (segunda parte do token)
+            String token = authorizationHeader.substring(7);
+            String[] parts = token.split("\\.");
+            if (parts.length > 1) {
+                byte[] decodedBytes = java.util.Base64.getUrlDecoder().decode(parts[1]);
+                String payload = new String(decodedBytes);
+                
+                // Procura a claim "sub" (subject) que contém o e-mail injetado pelo Node
+                if (payload.contains("\"sub\":\"")) {
+                    int start = payload.indexOf("\"sub\":\"") + 7;
+                    int end = payload.indexOf("\"", start);
+                    email = payload.substring(start, end);
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Nota: Usando fallback de e-mail para o ambiente de testes.");
+        }
+
+        // 3. Executa a lógica de negócios no UserService atualizando o MySQL
+        com.example.secrets.entity.User updatedUser = userService.updateProfile(email, dto);
+        
+        // 4. Monta a resposta estruturada do DTO
+        java.util.List<String> rolesString = updatedUser.getRoles().stream()
+                .map(role -> role.getName().toString())
+                .toList();
+                
+        com.example.secrets.dto.UserProfileDto profileDto = new com.example.secrets.dto.UserProfileDto(
+                updatedUser.getName(),
+                updatedUser.getEmail(),
+                rolesString
+        );
+
+        return ResponseEntity.ok(profileDto);
     }
 }

@@ -1,22 +1,79 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8"><title>Dashboard Protegido</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Protegida</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #e9ecef; padding: 40px; }
-        .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); max-width: 800px; margin: 0 auto; }
-        .jwt-box { background-color: #f8f9fa; border-left: 5px solid #28a745; padding: 15px; font-family: monospace; word-break: break-all; margin-top: 15px; border-radius: 0 4px 4px 0; }
+        body { font-family: Arial, sans-serif; background-color: #edf2f7; margin: 0; padding: 20px; }
+        .card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); max-width: 600px; margin: 30px auto; }
+        h1 { color: #2b6cb0; margin-top: 0; }
+        .user-info { background: #f7fafc; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #48bb78; }
+        .btn-group { display: flex; flex-direction: column; gap: 10px; }
+        .btn { padding: 12px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; text-align: center; text-decoration: none; font-size: 15px; }
+        .btn-primary { background-color: #4299e1; color: white; }
+        .btn-primary:hover { background-color: #3182ce; }
+        .btn-success { background-color: #48bb78; color: white; }
+        .btn-success:hover { background-color: #38a169; }
+        .btn-danger { background-color: #e53e3e; color: white; }
+        .btn-danger:hover { background-color: #c53030; }
+        .console-output { background: #1a202c; color: #63b3ed; padding: 15px; border-radius: 6px; font-family: monospace; min-height: 60px; margin-top: 15px; white-space: pre-wrap; word-break: break-all; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>🔒 Área Restrita do Usuário</h2>
-        <p>Bem-vindo, <strong><%= email %></strong>! Você passou com sucesso pela validação de dois fatores (2FA).</p>
-        <hr>
-        <h4>Token JWT armazenado com sucesso na sessão do Frontend (Critério de Aceite):</h4>
-        <div class="jwt-box"><%= token %></div>
-        <br>
-        <a href="/login" style="color: #dc3545;">Sair do Sistema</a>
+
+    <div class="card">
+        <h1>Painel de Controle Protegido</h1>
+        
+        <div class="user-info">
+            <p><strong>Usuário Ativo:</strong> <%= email %></p>
+            <p><strong>Token JWT armazenado na sessão:</strong> Amarrado com sucesso! (Exposto nas requisições HTTP)</p>
+        </div>
+
+        <div class="btn-group">
+            <button class="btn btn-primary" onclick="testarEndpointProtegido()">🔒 Testar Endpoint Protegido</button>
+            <button class="btn btn-success" onclick="buscarMeuPerfil()">👤 Meu Perfil (Dados do Banco)</button>
+            <button class="btn btn-danger" onclick="efetuarLogout()">🚪 Sair do Sistema</button>
+        </div>
+
+        <h3>Retorno da API (Console Local):</h3>
+        <div id="consoleOutput" class="console-output">Aguardando interação com os microsserviços...</div>
     </div>
+
+    <script>
+        // Função do Botão 1: Chama a rota proxy do frontend protegida por JWT
+        async function testarEndpointProtegido() {
+            const out = document.getElementById('consoleOutput');
+            out.innerText = "Chamando API protegida...";
+            try {
+                const res = await fetch('/api/protected');
+                const data = await res.text();
+                out.innerText = `[Status ${res.status}] Resposta:\n${data}`;
+            } catch (err) {
+                out.innerText = "Erro ao processar requisição: " + err.message;
+            }
+        }
+
+        // Função do Botão 2: Busca os dados reais gravados na tabela ms_user
+        async function buscarMeuPerfil() {
+            const out = document.getElementById('consoleOutput');
+            out.innerText = "Buscando dados de perfil no banco de dados...";
+            try {
+                // Como não criamos um endpoint proxy específico para o GET /users/me ainda,
+                // vamos simular ou chamar uma rota que implementaremos no server.js
+                const res = await fetch('/api/me');
+                const data = await res.json();
+                out.innerText = `[Perfil Atualizado no MySQL]:\nNome: ${data.name}\nE-mail: ${data.email}\nRoles atribuídas: ${data.roles.join(', ')}`;
+            } catch (err) {
+                out.innerText = "Erro ao buscar dados do perfil.";
+            }
+        }
+
+        // Função do Botão 3: Limpa a sessão do servidor e sessionStorage do cliente
+        function efetuarLogout() {
+            sessionStorage.clear(); // Limpa armazenamento do lado do cliente
+            window.location.href = '/logout'; // Chama destruição de sessão no Node
+        }
+    </script>
 </body>
 </html>

@@ -165,4 +165,39 @@ public class UserService {
         
         return codigoCorreto.equals(codigoDigitado);
     }
+
+    @Transactional
+    public User updateProfile(String email, com.example.secrets.dto.UpdateProfileDto dto) {
+        // 1. Busca o usuário pelo e-mail
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Usuário não encontrado com o e-mail: " + email));
+
+        // 2. Atualiza o nome (Conforme requisito do campo 'name' na entidade)
+        user.setName(dto.getName());
+
+        // 3. Converte a String recebida do Frontend ("ROLE_CUSTOMER" ou "ROLE_ADMINISTRATOR") para o seu Enum real
+        com.example.secrets.enums.RoleName roleEnum = com.example.secrets.enums.RoleName.valueOf(dto.getRole());
+
+        // 4. Busca a Role correspondente no banco de dados usando a mesma estrutura limpa que você já usa no createUser
+        Role finalRole;
+        try {
+            finalRole = entityManager.createQuery(
+                    "SELECT r FROM Role r WHERE r.name = :name", Role.class)
+                    .setParameter("name", roleEnum)
+                    .getSingleResult();
+        } catch (Exception e) {
+            // Caso a role ainda não exista fisicamente na tabela do banco, cria dinamicamente
+            finalRole = Role.builder()
+                    .name(roleEnum)
+                    .build();
+            entityManager.persist(finalRole);
+        }
+
+        // 5. Substitui as roles antigas pela nova selecionada (critério de uma única role por usuário)
+        user.getRoles().clear();
+        user.getRoles().add(finalRole);
+
+        // 6. Salva as mudanças e retorna o objeto sincronizado
+        return userRepository.save(user);
+    }
 }
